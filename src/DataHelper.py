@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -5,18 +6,16 @@ Created on Sat Jun 29 15:13:30 2019
 
 @author: roshanprakash
 """
-
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
-import matplotlib.pyplot as plt
 np.random.seed(12)
 
 class DataHelper:
     
     """ Data Helper to process Historical data and to sample batches of training data when required."""
     
-    def __init__(self, data_path, train_size=0.8, batch_size=256, input_steps=28, output_steps=7):
+    def __init__(self, data_path, train_size=0.8, batch_size=256, input_steps=28, output_steps=1):
         """
         Sets up model data of shape (N,input_steps,1) and corresponding targets of shape (N,T,output_steps)
         
@@ -56,12 +55,14 @@ class DataHelper:
         for idx in range(N-(input_steps+output_steps)-3):
             self.x[idx] = data[idx:idx+input_steps]
             # to make the model more robust, we will setup the output/target sequence for input value, x_t, to start at any randomly chosen value in the set (x_t+1,.., x_t+3)
-            robust_idx = np.random.randint(idx+1, idx+4)  
+            #robust_idx = np.random.randint(idx+1, idx+4) 
+            robust_idx = idx+1
             temp = data[robust_idx:robust_idx+input_steps+output_steps] 
             for t_idx in range(input_steps):
-                self.y[idx][t_idx] = temp[t_idx:t_idx+output_steps][0]
-     
-    def sample_batches(self):
+                self.y[idx, t_idx, :] = temp[t_idx:t_idx+output_steps].T[0]
+        self.y = self.y[:, -1, :]
+  
+    def sample_batches(self, num_batches=72):
         """
         Shuffles the model's input (and output) data and returns batches of data for training.
         
@@ -74,14 +75,12 @@ class DataHelper:
         - Numpy arrays containing the training batch of shape (adjusted_N, batch_size, input_steps, 1) 
           and corresponding targets of shape (adjusted_N, batch_size, input_steps, output_steps).
         """
-        N, T, D = self.x[:self.split_idx].shape
-        adjusted_N = N//self.batch_size
-        end_idx = N-N%self.batch_size
-        shuffled_idxs = list(np.random.permutation(np.arange(N)))
-        x_batches = np.reshape(self.x[shuffled_idxs][:end_idx], (adjusted_N, self.batch_size, \
-                        self.input_steps, 1))
-        y_batches = np.reshape(self.y[shuffled_idxs][:end_idx], (adjusted_N, self.batch_size, \
-                        self.input_steps, self.output_steps))     
+        x_batches = np.zeros(shape=[num_batches, self.batch_size, self.input_steps, self.output_steps])
+        y_batches = np.zeros(shape=[num_batches, self.batch_size, self.output_steps])
+        for batch_idx in range(num_batches):
+            sampled_idxs = np.random.choice(np.arange(self.x.shape[0]), size=self.batch_size)
+            x_batches[batch_idx] = self.x[sampled_idxs]
+            y_batches[batch_idx] = self.y[sampled_idxs]
         return x_batches, y_batches
     
     def get_test_data(self):
@@ -102,3 +101,5 @@ class DataHelper:
 if __name__=='__main__':
     path = '../data/PFE.csv'
     helper = DataHelper(path)
+    helper.get_test_data()
+    xb, yb = helper.sample_batches()
