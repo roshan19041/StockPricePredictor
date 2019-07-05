@@ -10,11 +10,16 @@ import matplotlib.pyplot as plt
 from DataHelper import *
 
 class PricePredictor:
-   
-    """ LSTM Network to predict stock prices. """
+    """ 
+    A Deep-LSTM Neural Network that predicts stock prices.
+        
+    Tip : To make a sequence of predictions, compute forward passes iteratively, appending the latest prediction to the previous input 
+          sequence and then removing the first data point from that updated input sequence.
+           
+    """
     
     def __init__(self, num_timesteps=28, num_processing_layers=2, process_units=[256, 84], num_LSTM_layers=5, out_dims=[512, 256, 128, 64, 16],\
-                 num_output_layers=3, output_units=[64, 12, 1], drop_rate=0.2, learning_rate=0.001):
+                 num_output_layers=3, output_units=[64, 12, 1], drop_rate=0.2, learning_rate=0.0001):
         """
         Initializes the network architecture
         
@@ -26,9 +31,9 @@ class PricePredictor:
         - num_LSTM_layers (int, default=5) : the number of LSTM layers 
         - out_dims (list, default=[512, 256, 128, 64, 16]) : the output dimensions of the LSTM layers
         - num_output_layers (int, default=3) : the number of output layers that process the LSTM output
-        - output_units (list, default=[64, 12, 7]) : the number of hidden units in the output processing layers 
-        - drop_rate (float, default=0.5) : the dropout rate for the dropout layers
-        - learning_rate (float, default=0.001) : the learning rate for network
+        - output_units (list, default=[64, 12, 1]) : the number of hidden units in the output processing layers 
+        - drop_rate (float, default=0.2) : the dropout rate for the dropout layers
+        - learning_rate (float, default=0.0001) : the learning rate for network
         
         RETURNS
         -------
@@ -43,7 +48,7 @@ class PricePredictor:
         self.y = tf.placeholder(dtype=tf.float32, shape=[None, output_units[-1]])
         self.is_training = tf.placeholder(tf.bool)
         N = tf.shape(self.x)[0]
-        # Network architecture build
+        # Network architecture
         self.layers = {}
          # first few layers are fully-connected layers to preprocess/project the input into a space with easier temporal dynamics
         for layer_idx in range(1,  num_processing_layers+1):
@@ -93,8 +98,7 @@ class PricePredictor:
         self.train_step = self.optimizer.apply_gradients(zip(self.gradients, weights))
         
     def _compute_normalized_loss(self):
-        """ Normalizes the mean squared error and returns the normalized MSE. """ 
-        #loss = tf.losses.mean_pairwise_squared_error(self.y[:, -1, :], self.predictions[:, -1, :])
+        """ Computes the Mean Squared Error between predictions and ground truth values. """ 
         loss = tf.losses.mean_squared_error(self.y, self.predictions[:, -1, :])
         return loss
      

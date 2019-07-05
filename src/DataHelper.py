@@ -54,13 +54,11 @@ class DataHelper:
         self.y = np.zeros((N-(input_steps+output_steps)-3, input_steps, output_steps))
         for idx in range(N-(input_steps+output_steps)-3):
             self.x[idx] = data[idx:idx+input_steps]
-            # to make the model more robust, we will setup the output/target sequence for input value, x_t, to start at any randomly chosen value in the set (x_t+1,.., x_t+3)
-            #robust_idx = np.random.randint(idx+1, idx+4) 
-            robust_idx = idx+1
-            temp = data[robust_idx:robust_idx+input_steps+output_steps] 
+            target_idx = idx+1
+            temp = data[target_idx:target_idx+input_steps+output_steps] 
             for t_idx in range(input_steps):
                 self.y[idx, t_idx, :] = temp[t_idx:t_idx+output_steps].T[0]
-        self.y = self.y[:, -1, :]
+        self.y = self.y[:, -1, :] # shape of targets : (N, 1)
   
     def sample_batches(self, num_batches=72):
         """
@@ -68,12 +66,12 @@ class DataHelper:
         
         PARAMETERS
         ----------
-        - None
+        - num_batches (int, default=72) : the number of batches to sample
         
         RETURNS
         -------
-        - Numpy arrays containing the training batch of shape (adjusted_N, batch_size, input_steps, 1) 
-          and corresponding targets of shape (adjusted_N, batch_size, input_steps, output_steps).
+        - Numpy arrays containing the training batch of shape (num_batches, batch_size, input_steps, output_steps) 
+          and corresponding targets of shape (num_batches, batch_size, output_steps).
         """
         x_batches = np.zeros(shape=[num_batches, self.batch_size, self.input_steps, self.output_steps])
         y_batches = np.zeros(shape=[num_batches, self.batch_size, self.output_steps])
@@ -81,7 +79,7 @@ class DataHelper:
             sampled_idxs = np.random.choice(np.arange(self.x.shape[0]), size=self.batch_size)
             x_batches[batch_idx] = self.x[sampled_idxs]
             y_batches[batch_idx] = self.y[sampled_idxs]
-        return x_batches, y_batches
+        return x_batches, y_batches # default shapes are (72, 256, 28, 1) and (72, 256, 1) respectively
     
     def get_test_data(self):
         """
@@ -93,13 +91,13 @@ class DataHelper:
         
         RETURNS
         -------
-        - Numpy arrays containing the test samples of shape (N, input_steps, 1) 
-          and targets of shape (N, input_steps, output_steps).
+        - Numpy arrays containing the test samples of shape (N, input_steps, output_steps) 
+          and targets of shape (N, output_steps).
         """
-        return self.x[self.split_idx:], self.y[self.split_idx:]
+        return self.x[self.split_idx:], self.y[self.split_idx:] # default shapes are (N, 28, 1) and (N, 1) respectively
 
 if __name__=='__main__':
     path = '../data/PFE.csv'
     helper = DataHelper(path)
     helper.get_test_data()
-    xb, yb = helper.sample_batches()
+    x_test, y_test = helper.sample_batches()
