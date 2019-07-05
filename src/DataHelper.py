@@ -73,10 +73,11 @@ class DataHelper:
         - Numpy arrays containing the training batch of shape (num_batches, batch_size, input_steps, output_steps) 
           and corresponding targets of shape (num_batches, batch_size, output_steps).
         """
+        assert self.batch_size<=self.split_idx, 'Not enough data points to sample a batch!'
         x_batches = np.zeros(shape=[num_batches, self.batch_size, self.input_steps, self.output_steps])
         y_batches = np.zeros(shape=[num_batches, self.batch_size, self.output_steps])
         for batch_idx in range(num_batches):
-            sampled_idxs = np.random.choice(np.arange(self.x.shape[0]), size=self.batch_size)
+            sampled_idxs = np.random.choice(np.arange(self.split_idx), size=self.batch_size)
             x_batches[batch_idx] = self.x[sampled_idxs]
             y_batches[batch_idx] = self.y[sampled_idxs]
         return x_batches, y_batches # default shapes are (72, 256, 28, 1) and (72, 256, 1) respectively

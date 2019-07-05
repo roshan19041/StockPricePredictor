@@ -44,32 +44,34 @@ class PricePredictor:
         assert (num_processing_layers==len(process_units)) and (num_LSTM_layers==len(out_dims)), 'Output dimension must be specified for every layer!'
         self.t = num_timesteps
         # initialize placeholders 
-        self.x = tf.placeholder(dtype=tf.float32, shape=[None, num_timesteps, 1])
-        self.y = tf.placeholder(dtype=tf.float32, shape=[None, output_units[-1]])
-        self.is_training = tf.placeholder(tf.bool)
+        self.x = tf.placeholder(dtype=tf.float32, shape=[None, num_timesteps, 1], name='inputs')
+        self.y = tf.placeholder(dtype=tf.float32, shape=[None, output_units[-1]], name='targets')
+        self.is_training = tf.placeholder(tf.bool, name='is_training')
         N = tf.shape(self.x)[0]
         # Network architecture
         self.layers = {}
          # first few layers are fully-connected layers to preprocess/project the input into a space with easier temporal dynamics
         for layer_idx in range(1,  num_processing_layers+1):
-            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.Dense(process_units[layer_idx-1], activation=tf.nn.relu)
+            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.Dense(process_units[layer_idx-1], activation=tf.nn.relu, name='layer_{}'.format(layer_idx))
         # LSTM layers
         for layer_idx in range(num_processing_layers+1, num_processing_layers+num_LSTM_layers+1):
             out_dim = out_dims[layer_idx-num_processing_layers-1]
-            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.LSTM(out_dim, return_sequences=True)
+            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.LSTM(out_dim, return_sequences=True, name='layer_{}'.format(layer_idx))
             # add batch normalization layers
-            self.layers['batch_norm_layer_{}'.format(layer_idx)] = tf.keras.layers.BatchNormalization(fused=True)
-            self.layers['activation_layer_{}'.format(layer_idx)] = tf.keras.layers.ReLU()
-            self.layers['drop_layer_{}'.format(layer_idx)] = tf.keras.layers.Dropout(rate=drop_rate, noise_shape=(N, self.t, out_dim), seed=int(10000*layer_idx))
+            self.layers['batch_norm_layer_{}'.format(layer_idx)] = tf.keras.layers.BatchNormalization(fused=True, name='batch_norm_layer_{}'.format(layer_idx-num_processing_layers))
+            self.layers['activation_layer_{}'.format(layer_idx)] = tf.keras.layers.ReLU(name='activation_layer_{}'.format(layer_idx))
+            self.layers['drop_layer_{}'.format(layer_idx)] = tf.keras.layers.Dropout(rate=drop_rate, noise_shape=(N, self.t, out_dim), seed=int(10000*layer_idx), \
+                                                                                       name='dropout_layer_{}'.format(layer_idx-num_processing_layers))
         # output layers
         for layer_idx in range(num_processing_layers+num_LSTM_layers+1, num_processing_layers+num_LSTM_layers+num_output_layers+1):
             if layer_idx==num_processing_layers+num_LSTM_layers+num_output_layers:
                 activation = None
             else:
                 activation = tf.nn.relu
-            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.Dense(output_units[layer_idx-(num_processing_layers+num_LSTM_layers+1)], activation=activation)
+            self.layers['layer_{}'.format(layer_idx)] = tf.keras.layers.Dense(output_units[layer_idx-(num_processing_layers+num_LSTM_layers+1)], activation=activation, \
+                                                                               name='layer_{}'.format(layer_idx))
         # forward pass
-        self.x_ = tf.reshape(self.x, shape=[-1, 1]) # each timestep's value is now considered a single input
+        self.x_ = tf.reshape(self.x, shape=[-1, 1], name='inputs_reshaped') # each timestep's value is now considered a single input
         prev_out = None
         for layer_idx in range(1, num_processing_layers+num_LSTM_layers+num_output_layers+1):
             if layer_idx==1:
